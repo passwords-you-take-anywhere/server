@@ -1,0 +1,40 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Environment & tooling
+.venv/
+.env
+.env.local
+.python-version
+
+# Testing & coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# IDEs & editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ruff & Pyright caches
+.ruff_cache/
+.pyright/
+
+# Miscellaneous
+.DS_Store
+Thumbs.db
