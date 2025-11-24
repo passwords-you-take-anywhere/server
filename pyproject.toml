@@ -1,0 +1,62 @@
+[project]
+name = "pyta-server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.121.3",
+    "pydantic-settings>=2.12.0",
+    "uvicorn>=0.38.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.407",
+    "ruff>=0.14.6",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "W",  # pycodestyle warnings
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "N",  # pep8-naming
+    "I",  # isort
+    "PT", # flake8-pytest-style
+    "Q",  # flake8-quotes
+    "RET",# flake8-return
+    "SIM",# flake8-simplify
+    "T10",# flake8-debugger
+    "TID",# flake8-tidy-imports
+    "UP", # pyupgrade
+    "ARG",# flake8-unused-arguments
+    "PERF",# perflint
+    "RUF",# Ruff-specific checks
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+include = ["src"]
+ignore = ["**/__pycache__", "**/.venv", "**/.ruff_cache"]
+reportMissingTypeStubs = "warning"
+reportUnknownVariableType = "error"
+reportUnknownMemberType = "error"
+reportUnknownArgumentType = "error"
+reportUnknownParameterType = "error"
+reportUnknownLambdaType = "error"
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+analyzeUnannotatedFunctions = true
