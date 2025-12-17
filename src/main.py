@@ -1,14 +1,23 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from src.core.db import init_db
 from src.core.settings import Settings
 from src.v1.auth.auth_router import auth_router
 
 settings = Settings()
 
 
-app = FastAPI(title="PYTA API")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_db(settings)
+    yield
+
+
+app = FastAPI(title="PYTA API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
