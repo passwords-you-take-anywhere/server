@@ -7,7 +7,8 @@ from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
-from src.core.settings import Settings
+
+from core.settings import Settings
 
 
 def build_database_url(settings: Settings) -> str:
@@ -37,7 +38,7 @@ def get_session(settings: Settings) -> Iterator[Session]:
 
 def init_db(settings: Settings) -> None:
     # Ensure models are imported so they register with SQLModel.metadata
-    from src.core import models as _models  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    from core import models as _models  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
     engine = get_engine(settings)
     SQLModel.metadata.create_all(engine)
