@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import LargeBinary
+from sqlalchemy import LargeBinary, func
 from sqlalchemy.schema import Column
 from sqlmodel import Field, Relationship, SQLModel  # pyright: ignore[reportUnknownVariableType]
 
@@ -45,6 +45,8 @@ class Storage(SQLModel, table=True):
     password_data: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     domains: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     notes: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+    created_at: datetime = Field(nullable=False, sa_column_kwargs={"server_default": func.now()})
     updated: datetime = Field(nullable=False, index=True)
+    deleted_at: Optional[datetime] = Field(default=None, nullable=True, index=True)
 
     user: Optional[User] = Relationship(back_populates="storages")
