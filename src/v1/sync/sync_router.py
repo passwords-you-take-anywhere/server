@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -7,7 +6,6 @@ from sqlmodel import Session, select
 
 from core.models import Storage, User
 from v1.auth.dependencies import get_current_user, get_db_session
-
 
 sync_router = APIRouter(prefix="/sync", tags=["sync"])
 
@@ -21,12 +19,12 @@ class StorageChange(BaseModel):
     notes: bytes
     created_at: datetime
     updated: datetime
-    deleted_at: Optional[datetime]
+    deleted_at: datetime | None
 
 
 class SyncChangesResponse(BaseModel):
-    changes: List[StorageChange]
-    next_cursor: Optional[str]
+    changes: list[StorageChange]
+    next_cursor: str | None
     has_more: bool
 
 
@@ -46,9 +44,9 @@ class StorageDelete(BaseModel):
 
 
 class SyncPushRequest(BaseModel):
-    creates: List[StorageCreateUpdate] = []
-    updates: List[StorageCreateUpdate] = []
-    deletes: List[StorageDelete] = []
+    creates: list[StorageCreateUpdate] = []
+    updates: list[StorageCreateUpdate] = []
+    deletes: list[StorageDelete] = []
 
 
 class ConflictItem(BaseModel):
@@ -60,14 +58,14 @@ class ConflictItem(BaseModel):
 
 class SyncPushResponse(BaseModel):
     applied: int
-    conflicts: List[ConflictItem]
+    conflicts: list[ConflictItem]
 
 
 @sync_router.get("/changes", response_model=SyncChangesResponse)
 async def get_changes(
-    since: Optional[datetime] = None,
+    since: datetime | None = None,
     limit: int = 100,
-    cursor: Optional[str] = None,
+    cursor: str | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db_session),
 ):
@@ -101,10 +99,10 @@ async def get_changes(
         except (ValueError, IndexError):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid cursor format"
-            )
+            ) from None
 
     # Order by updated, then id for stable pagination
-    query = query.order_by(Storage.updated, Storage.id).limit(limit + 1)
+    query = query.order_by(Storage.updated, Storage.id).limit(limit + 1)  # pyright: ignore[reportArgumentType]
 
     results = db.exec(query).all()
 
@@ -150,28 +148,25 @@ async def push_changes(
     and returned in conflicts array for client to handle.
     """
     applied_count = 0
-    conflicts: List[ConflictItem] = []
+    conflicts: list[ConflictItem] = []
 
     # Process creates
     for create_item in payload.creates:
         existing = db.exec(
-            select(Storage).where(
-                Storage.id == create_item.id, Storage.user_id == current_user.id
-            )
+            select(Storage).where(Storage.id == create_item.id, Storage.user_id == current_user.id)
         ).first()
 
-        if existing:
-            # Item already exists - check for conflict
-            if existing.updated > create_item.updated:
-                conflicts.append(
-                    ConflictItem(
-                        id=create_item.id,
-                        client_updated=create_item.updated,
-                        server_updated=existing.updated,
-                        reason="Server has newer version",
-                    )
+        if existing and existing.updated > create_item.updated:
+            # Item already exists and has newer version - conflict
+            conflicts.append(
+                ConflictItem(
+                    id=create_item.id,
+                    client_updated=create_item.updated,
+                    server_updated=existing.updated,
+                    reason="Server has newer version",
                 )
-                continue
+            )
+            continue
 
         # Create new or overwrite (last-write-wins)
         server_time = datetime.now()
@@ -196,9 +191,7 @@ async def push_changes(
     # Process updates
     for update_item in payload.updates:
         existing = db.exec(
-            select(Storage).where(
-                Storage.id == update_item.id, Storage.user_id == current_user.id
-            )
+            select(Storage).where(Storage.id == update_item.id, Storage.user_id == current_user.id)
         ).first()
 
         if not existing:
@@ -238,9 +231,7 @@ async def push_changes(
     # Process deletes (soft delete)
     for delete_item in payload.deletes:
         existing = db.exec(
-            select(Storage).where(
-                Storage.id == delete_item.id, Storage.user_id == current_user.id
-            )
+            select(Storage).where(Storage.id == delete_item.id, Storage.user_id == current_user.id)
         ).first()
 
         if not existing:
