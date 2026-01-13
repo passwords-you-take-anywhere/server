@@ -4,9 +4,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from src.core.db import init_db
-from src.core.settings import Settings
-from src.v1.auth.auth_router import auth_router
+
+from core.db import init_db
+from core.settings import Settings
+from v1.auth.auth_router import auth_router
 
 settings = Settings()
 
@@ -42,4 +43,4 @@ async def validation_exception_handler(_request: Request, exc: ValidationError) 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("src.main:app", host="0.0.0.0", port=settings.port, reload=settings.debug)
+    uvicorn.run("main:app", host="0.0.0.0", port=settings.port, reload=settings.debug)

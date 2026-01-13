@@ -25,7 +25,16 @@ class User(SQLModel, table=True):
     encryption_key: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
 
     auth: Optional[Auth] = Relationship(back_populates="user")
+
     storages: List["Storage"] = Relationship(back_populates="user")
+    sessions: List["Session"] = Relationship(back_populates="user")
+
+
+class Session(SQLModel, table=True):
+    id: str = Field(primary_key=True, index=True)
+    user_id: str = Field(foreign_key="user.id", nullable=False, index=True)
+
+    user: Optional["User"] = Relationship(back_populates="sessions")
 
 
 class Storage(SQLModel, table=True):
