@@ -13,9 +13,10 @@ def _get_settings() -> Settings:
     return Settings()
 
 
-def get_db_session(settings: Settings = Depends(_get_settings)) -> Generator[Session, None, None]:
+def get_db_session(settings: Settings = Depends(_get_settings)) -> Generator[Session]:
     """Get database session - can be overridden in tests."""
-    yield from get_session(settings)
+    with get_session(settings) as session:
+        yield session
 
 
 async def get_current_user(

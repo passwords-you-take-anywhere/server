@@ -1,9 +1,8 @@
 # Test configuration
-import os
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, AsyncGenerator
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -12,9 +11,8 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from core.db import get_session
-from core.models import Auth, Session as UserSession
-from core.models import Storage, User
+from core.models import Auth, Storage, User
+from core.models import Session as UserSession
 from core.settings import Settings
 
 
@@ -43,7 +41,7 @@ def engine_fixture() -> Any:
 
 
 @pytest.fixture(name="session")
-def session_fixture(engine: Any) -> Generator[Session, None, None]:
+def session_fixture(engine: Any) -> Generator[Session]:
     """Create a test database session."""
     with Session(engine) as session:
         yield session
@@ -54,13 +52,14 @@ def app_fixture(engine: Any) -> FastAPI:
     """Create FastAPI app with test configuration."""
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
+
     from v1.auth.auth_router import auth_router
     from v1.auth.dependencies import get_db_session
     from v1.sync import sync_router
 
     # Create app without lifespan (no DB init during testing)
     @asynccontextmanager
-    async def test_lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    async def test_lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         # Don't initialize real database in tests
         yield
 
@@ -70,7 +69,7 @@ def app_fixture(engine: Any) -> FastAPI:
     app.include_router(sync_router)
 
     # Override get_db_session to use test database
-    def get_test_db_session() -> Generator[Session, None, None]:
+    def get_test_db_session() -> Generator[Session]:
         with Session(engine) as session:
             yield session
 
@@ -80,7 +79,7 @@ def app_fixture(engine: Any) -> FastAPI:
 
 
 @pytest.fixture(name="client")
-def client_fixture(app: FastAPI) -> Generator[TestClient, None, None]:
+def client_fixture(app: FastAPI) -> Generator[TestClient]:
     """Create test client."""
     with TestClient(app) as client:
         yield client

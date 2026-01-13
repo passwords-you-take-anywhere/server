@@ -3,12 +3,10 @@
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from core.models import Storage, User
-from core.models import Session as UserSession
 
 
 class TestSyncChangesEndpoint:
