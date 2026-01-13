@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from core.db import init_db
 from core.settings import Settings
 from v1.auth.auth_router import auth_router
+from v1.sync import sync_router
 
 settings = Settings()
 
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(sync_router)
 
 
 @app.exception_handler(ValidationError)
