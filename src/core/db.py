@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
+from core import models as _models
 
 from core.settings import Settings
 
@@ -42,3 +43,8 @@ def init_db(settings: Settings) -> None:
 
     engine = get_engine(settings)
     SQLModel.metadata.create_all(engine)
+
+    if settings.seed_db:
+        from core.seed import seed_if_empty
+
+        seed_if_empty(settings)

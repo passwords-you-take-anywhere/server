@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     db_user: str = Field(default="postgres", validation_alias="POSTGRES_USER")
     db_password: str = Field(default="example", validation_alias="POSTGRES_PASSWORD")
     db_name: str = Field(default="postgres", validation_alias="POSTGRES_DB")
+    seed_db: bool = Field(default=False, validation_alias="SEED_DB")
 
     logs_amount_to_keep: int = 1
 
