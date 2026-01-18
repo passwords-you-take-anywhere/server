@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from sqlmodel import Session, select
@@ -55,7 +55,7 @@ def seed_if_empty(settings: Settings) -> bool:
                     password_data=f"{password}_site{offset}".encode("ascii"),
                     domains=domain.encode("ascii"),
                     notes=f"seeded record {offset} for {email}".encode("ascii"),
-                    updated=datetime.utcnow() - timedelta(days=offset),
+                    updated=datetime.now(UTC) - timedelta(days=offset),
                 )
                 db.add(storage)
 
