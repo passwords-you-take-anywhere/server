@@ -7,7 +7,7 @@ from sqlmodel import select
 from core.db import get_session
 from core.models import Auth, User
 from core.models import Session as UserSession
-from core.passwords import verify_password
+from core.passwords import hash_password, verify_password
 from core.settings import Settings
 
 
@@ -18,6 +18,11 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     session_id: str
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 def _get_settings() -> Settings:
     return Settings()
@@ -58,6 +63,53 @@ async def login(
             user_id=user.id,
         )
 
+        db.add(session)
+        db.commit()
+
+        response.set_cookie(
+            key="session_id",
+            value=session.id,
+            httponly=True,
+            secure=not settings.debug,
+            samesite="lax",
+        )
+
+        return LoginResponse(session_id=session.id)
+
+
+@auth_router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    payload: RegisterRequest,
+    response: Response,
+    settings: Settings = Depends(_get_settings),  # noqa
+):
+    with get_session(settings) as db:
+        existing = db.exec(select(Auth).where(Auth.email == payload.email)).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+
+        auth = Auth(
+            id=str(uuid4()),
+            role_id="user",
+            email=payload.email,
+            password=hash_password(payload.password),
+        )
+        user = User(
+            id=str(uuid4()),
+            auth_id=auth.id,
+            encryption_key=uuid4().bytes,
+        )
+
+        db.add(auth)
+        db.add(user)
+
+        session = UserSession(
+            id=str(uuid4()),
+            user_id=user.id,
+        )
         db.add(session)
         db.commit()
 

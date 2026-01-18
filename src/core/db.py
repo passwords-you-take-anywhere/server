@@ -38,7 +38,11 @@ def get_session(settings: Settings) -> Iterator[Session]:
 
 def init_db(settings: Settings) -> None:
     # Ensure models are imported so they register with SQLModel.metadata
-    from core import models as _models  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
     engine = get_engine(settings)
     SQLModel.metadata.create_all(engine)
+
+    if settings.seed_db:
+        from core.seed import seed_if_empty
+
+        seed_if_empty(settings)
