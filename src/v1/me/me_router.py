@@ -1,12 +1,11 @@
-from pydantic import BaseModel, EmailStr
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, EmailStr
 from sqlmodel import select
 
 from core.db import get_session
-from core.passwords import hmac_hash
 from core.models import Auth, User
 from core.models import Session as UserSession
+from core.passwords import hmac_hash
 from core.settings import Settings
 
 
