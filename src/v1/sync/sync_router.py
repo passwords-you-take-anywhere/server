@@ -33,7 +33,7 @@ class StorageCreateUpdate(BaseModel):
     id: str
     username_data: bytes
     password_data: bytes
-    domains: bytes
+    domains: list[bytes]
     notes: bytes
     updated: datetime  # Client's timestamp
 
@@ -153,7 +153,9 @@ async def push_changes(
     # Process creates
     for create_item in payload.creates:
         existing = db.exec(
-            select(Storage).where(Storage.id == create_item.id, Storage.user_id == current_user.id)
+            select(Storage).where(
+                Storage.id == create_item.id, Storage.user_id == current_user.id
+            )
         ).first()
 
         if existing and existing.updated > create_item.updated:
@@ -191,7 +193,9 @@ async def push_changes(
     # Process updates
     for update_item in payload.updates:
         existing = db.exec(
-            select(Storage).where(Storage.id == update_item.id, Storage.user_id == current_user.id)
+            select(Storage).where(
+                Storage.id == update_item.id, Storage.user_id == current_user.id
+            )
         ).first()
 
         if not existing:
@@ -231,7 +235,9 @@ async def push_changes(
     # Process deletes (soft delete)
     for delete_item in payload.deletes:
         existing = db.exec(
-            select(Storage).where(Storage.id == delete_item.id, Storage.user_id == current_user.id)
+            select(Storage).where(
+                Storage.id == delete_item.id, Storage.user_id == current_user.id
+            )
         ).first()
 
         if not existing:

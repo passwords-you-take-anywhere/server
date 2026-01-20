@@ -54,6 +54,7 @@ def seed_if_empty(settings: Settings) -> bool:
                     username_data=f"{email.split('@')[0]}_{offset}".encode("ascii"),
                     password_data=f"{password}_site{offset}".encode("ascii"),
                     domains=domain.encode("ascii"),
+                    created_at=datetime.now(UTC) - timedelta(days=offset),
                     notes=f"seeded record {offset} for {email}".encode("ascii"),
                     updated=datetime.now(UTC) - timedelta(days=offset),
                 )
