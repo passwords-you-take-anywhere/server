@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from core.models import Auth, Storage, User
+from core.models import Auth, Domain, Storage, StorageDomain, User
 from core.models import Session as UserSession
 from core.settings import Settings
 
@@ -135,18 +135,34 @@ def test_storage_items_fixture(session: Session, test_user: User) -> list[Storag
     base_time = datetime(2026, 1, 13, 10, 0, 0)
 
     for i in range(5):
+        storage_id = str(uuid4())
         storage = Storage(
-            id=str(uuid4()),
+            id=storage_id,
             user_id=test_user.id,
             username_data=f"encrypted_username_{i}".encode(),
             password_data=f"encrypted_password_{i}".encode(),
-            domains=f"encrypted_domains_{i}".encode(),
             notes=f"encrypted_notes_{i}".encode(),
             created_at=base_time,
             updated=datetime(2026, 1, 13, 10, i, 0),
             deleted_at=None,
         )
         session.add(storage)
+
+        # Create multiple domain records for each storage
+        for j in range(2):  # 2 domains per storage
+            domain = Domain(
+                id=str(uuid4()),
+                encrypted_domain=f"encrypted_domain_{i}_{j}".encode(),
+            )
+            session.add(domain)
+
+            storage_domain = StorageDomain(
+                id=str(uuid4()),
+                storage_id=storage_id,
+                domain_id=domain.id,
+            )
+            session.add(storage_domain)
+
         items.append(storage)
 
     session.commit()

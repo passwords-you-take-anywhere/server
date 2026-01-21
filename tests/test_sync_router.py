@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from core.models import Storage, User
+from core.models import Domain, Storage, StorageDomain, User
 
 
 class TestSyncChangesEndpoint:
@@ -160,18 +160,32 @@ class TestSyncChangesEndpoint:
         )
         session.add(other_user)
 
+        other_storage_id = str(uuid4())
         other_storage = Storage(
-            id=str(uuid4()),
+            id=other_storage_id,
             user_id=other_user.id,
             username_data=b"other_username",
             password_data=b"other_password",
-            domains=b"other_domains",
             notes=b"other_notes",
             created_at=datetime.now(),
             updated=datetime.now(),
             deleted_at=None,
         )
         session.add(other_storage)
+
+        # Create domain for other user's storage
+        domain = Domain(
+            id=str(uuid4()),
+            encrypted_domain=b"other_domain",
+        )
+        session.add(domain)
+        storage_domain = StorageDomain(
+            id=str(uuid4()),
+            storage_id=other_storage_id,
+            domain_id=domain.id,
+        )
+        session.add(storage_domain)
+
         session.commit()
 
         response = client.get("/sync/changes", headers=auth_headers)
@@ -249,7 +263,7 @@ class TestSyncPushEndpoint:
                     "id": new_id,
                     "username_data": "bmV3X3VzZXJuYW1l",  # base64-like for testing
                     "password_data": "bmV3X3Bhc3N3b3Jk",
-                    "domains": "bmV3X2RvbWFpbnM=",
+                    "domains": ["bmV3X2RvbWFpbnM=", "Ym13X2RvbWFpbjI="],
                     "notes": "bmV3X25vdGVz",
                     "updated": client_time.isoformat(),
                 }
@@ -293,7 +307,7 @@ class TestSyncPushEndpoint:
                     "id": item.id,
                     "username_data": "dXBkYXRlZF91c2VybmFtZQ==",
                     "password_data": "dXBkYXRlZF9wYXNzd29yZA==",
-                    "domains": "dXBkYXRlZF9kb21haW5z",
+                    "domains": ["dXBkYXRlZF9kb21haW5z"],
                     "notes": "dXBkYXRlZF9ub3Rlcw==",
                     "updated": client_time.isoformat(),
                 }
@@ -377,7 +391,7 @@ class TestSyncPushEndpoint:
                     "id": item.id,
                     "username_data": "b2xkX2RhdGE=",
                     "password_data": "b2xkX2RhdGE=",
-                    "domains": "b2xkX2RhdGE=",
+                    "domains": ["b2xkX2RhdGE="],
                     "notes": "b2xkX2RhdGE=",
                     "updated": client_time.isoformat(),
                 }
@@ -413,7 +427,7 @@ class TestSyncPushEndpoint:
                     "id": nonexistent_id,
                     "username_data": "ZGF0YQ==",
                     "password_data": "ZGF0YQ==",
-                    "domains": "ZGF0YQ==",
+                    "domains": ["ZGF0YQ=="],
                     "notes": "ZGF0YQ==",
                     "updated": datetime.now().isoformat(),
                 }
@@ -479,7 +493,7 @@ class TestSyncPushEndpoint:
                     "id": new_id,
                     "username_data": "bmV3",
                     "password_data": "bmV3",
-                    "domains": "bmV3",
+                    "domains": ["bmV3"],
                     "notes": "bmV3",
                     "updated": client_time.isoformat(),
                 }
@@ -489,7 +503,7 @@ class TestSyncPushEndpoint:
                     "id": update_item.id,
                     "username_data": "dXBkYXRlZA==",
                     "password_data": "dXBkYXRlZA==",
-                    "domains": "dXBkYXRlZA==",
+                    "domains": ["dXBkYXRlZA=="],
                     "notes": "dXBkYXRlZA==",
                     "updated": client_time.isoformat(),
                 }
@@ -545,7 +559,7 @@ class TestSyncPushEndpoint:
                     "id": item.id,
                     "username_data": "cmVzdG9yZWQ=",
                     "password_data": "cmVzdG9yZWQ=",
-                    "domains": "cmVzdG9yZWQ=",
+                    "domains": ["cmVzdG9yZWQ="],
                     "notes": "cmVzdG9yZWQ=",
                     "updated": client_time.isoformat(),
                 }
@@ -581,18 +595,32 @@ class TestSyncPushEndpoint:
         )
         session.add(other_user)
 
+        other_storage_id = str(uuid4())
         other_storage = Storage(
-            id=str(uuid4()),
+            id=other_storage_id,
             user_id=other_user.id,
             username_data=b"other_data",
             password_data=b"other_data",
-            domains=b"other_data",
             notes=b"other_data",
             created_at=datetime.now(),
             updated=datetime.now(),
             deleted_at=None,
         )
         session.add(other_storage)
+
+        # Create domain for other user's storage
+        domain = Domain(
+            id=str(uuid4()),
+            encrypted_domain=b"other_domain",
+        )
+        session.add(domain)
+        storage_domain = StorageDomain(
+            id=str(uuid4()),
+            storage_id=other_storage_id,
+            domain_id=domain.id,
+        )
+        session.add(storage_domain)
+
         session.commit()
 
         # Try to update other user's item
@@ -603,7 +631,7 @@ class TestSyncPushEndpoint:
                     "id": other_storage.id,
                     "username_data": "aGFja2Vk",
                     "password_data": "aGFja2Vk",
-                    "domains": "aGFja2Vk",
+                    "domains": ["aGFja2Vk"],
                     "notes": "aGFja2Vk",
                     "updated": datetime.now().isoformat(),
                 }

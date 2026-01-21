@@ -37,18 +37,31 @@ class Session(SQLModel, table=True):
     user: Optional["User"] = Relationship(back_populates="sessions")
 
 
+class Domain(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    encrypted_domain: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
+
+    storage_domains: List["StorageDomain"] = Relationship(back_populates="domain")
+
+
+class StorageDomain(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    storage_id: str = Field(foreign_key="storage.id", nullable=False, index=True)
+    domain_id: str = Field(foreign_key="domain.id", nullable=False, index=True)
+
+    storage: Optional["Storage"] = Relationship(back_populates="storage_domains")
+    domain: Optional[Domain] = Relationship(back_populates="storage_domains")
+
+
 class Storage(SQLModel, table=True):
     id: str = Field(primary_key=True)
     user_id: str = Field(foreign_key="user.id", nullable=False, index=True)
 
     username_data: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     password_data: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
-    domains: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     notes: bytes = Field(sa_column=Column(LargeBinary, nullable=False))
     created_at: datetime = Field(
-        sa_column=Column(
-            DateTime(timezone=True), nullable=False, server_default=func.now()
-        ),
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=func.now()),
     )
     updated: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
@@ -59,3 +72,4 @@ class Storage(SQLModel, table=True):
     )
 
     user: Optional[User] = Relationship(back_populates="storages")
+    storage_domains: List[StorageDomain] = Relationship(back_populates="storage")

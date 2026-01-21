@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from core.models import Storage, User
+from core.models import Domain, Storage, StorageDomain, User
 from v1.auth.dependencies import get_current_user, get_db_session
 
 sync_router = APIRouter(prefix="/sync", tags=["sync"])
@@ -15,7 +15,7 @@ class StorageChange(BaseModel):
     id: str
     username_data: bytes
     password_data: bytes
-    domains: bytes
+    domains: list[bytes]
     notes: bytes
     created_at: datetime
     updated: datetime
@@ -114,19 +114,27 @@ async def get_changes(
         last_item = items[-1]
         next_cursor = f"{last_item.updated.isoformat()}_{last_item.id}"
 
-    changes = [
-        StorageChange(
-            id=item.id,
-            username_data=item.username_data,
-            password_data=item.password_data,
-            domains=item.domains,
-            notes=item.notes,
-            created_at=item.created_at,
-            updated=item.updated,
-            deleted_at=item.deleted_at,
+    changes = []
+    for item in items:
+        # Fetch domains for this storage item
+        domain_records = db.exec(
+            select(Domain).join(StorageDomain).where(StorageDomain.storage_id == item.id)
+        ).all()
+
+        domains_list = [d.encrypted_domain for d in domain_records]
+
+        changes.append(
+            StorageChange(
+                id=item.id,
+                username_data=item.username_data,
+                password_data=item.password_data,
+                domains=domains_list,
+                notes=item.notes,
+                created_at=item.created_at,
+                updated=item.updated,
+                deleted_at=item.deleted_at,
+            )
         )
-        for item in items
-    ]
 
     return SyncChangesResponse(
         changes=changes,
@@ -153,9 +161,7 @@ async def push_changes(
     # Process creates
     for create_item in payload.creates:
         existing = db.exec(
-            select(Storage).where(
-                Storage.id == create_item.id, Storage.user_id == current_user.id
-            )
+            select(Storage).where(Storage.id == create_item.id, Storage.user_id == current_user.id)
         ).first()
 
         if existing and existing.updated > create_item.updated:
@@ -172,30 +178,49 @@ async def push_changes(
 
         # Create new or overwrite (last-write-wins)
         server_time = datetime.now()
+
+        if existing:
+            # Delete existing storage domains
+            existing_domains = db.exec(
+                select(StorageDomain).where(StorageDomain.storage_id == create_item.id)
+            ).all()
+            for sd in existing_domains:
+                db.delete(sd)
+            db.delete(existing)
+
         new_storage = Storage(
             id=create_item.id,
             user_id=current_user.id,
             username_data=create_item.username_data,
             password_data=create_item.password_data,
-            domains=create_item.domains,
             notes=create_item.notes,
             created_at=server_time if not existing else existing.created_at,
             updated=server_time,
             deleted_at=None,
         )
-
-        if existing:
-            db.delete(existing)
-
         db.add(new_storage)
+
+        # Create domain records for each domain
+        for domain_bytes in create_item.domains:
+            domain = Domain(
+                id=f"{create_item.id}_{len([d for d in create_item.domains if create_item.domains.index(d) <= create_item.domains.index(domain_bytes)])}",
+                encrypted_domain=domain_bytes,
+            )
+            db.add(domain)
+
+            storage_domain = StorageDomain(
+                id=f"sd_{create_item.id}_{domain.id}",
+                storage_id=create_item.id,
+                domain_id=domain.id,
+            )
+            db.add(storage_domain)
+
         applied_count += 1
 
     # Process updates
     for update_item in payload.updates:
         existing = db.exec(
-            select(Storage).where(
-                Storage.id == update_item.id, Storage.user_id == current_user.id
-            )
+            select(Storage).where(Storage.id == update_item.id, Storage.user_id == current_user.id)
         ).first()
 
         if not existing:
@@ -224,10 +249,31 @@ async def push_changes(
         server_time = datetime.now()
         existing.username_data = update_item.username_data
         existing.password_data = update_item.password_data
-        existing.domains = update_item.domains
         existing.notes = update_item.notes
         existing.updated = server_time
         existing.deleted_at = None  # Undelete if was deleted
+
+        # Delete existing domain relationships and create new ones
+        existing_domains = db.exec(
+            select(StorageDomain).where(StorageDomain.storage_id == update_item.id)
+        ).all()
+        for sd in existing_domains:
+            db.delete(sd)
+
+        # Create new domain records
+        for idx, domain_bytes in enumerate(update_item.domains):
+            domain = Domain(
+                id=f"{update_item.id}_{idx}_{server_time.timestamp()}",
+                encrypted_domain=domain_bytes,
+            )
+            db.add(domain)
+
+            storage_domain = StorageDomain(
+                id=f"sd_{update_item.id}_{domain.id}",
+                storage_id=update_item.id,
+                domain_id=domain.id,
+            )
+            db.add(storage_domain)
 
         db.add(existing)
         applied_count += 1
@@ -235,9 +281,7 @@ async def push_changes(
     # Process deletes (soft delete)
     for delete_item in payload.deletes:
         existing = db.exec(
-            select(Storage).where(
-                Storage.id == delete_item.id, Storage.user_id == current_user.id
-            )
+            select(Storage).where(Storage.id == delete_item.id, Storage.user_id == current_user.id)
         ).first()
 
         if not existing:
