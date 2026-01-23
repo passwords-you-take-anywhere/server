@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlmodel import select
 
 from core.db import get_session
@@ -9,6 +9,18 @@ from core.models import Auth, User
 from core.models import Session as UserSession
 from core.passwords import hash_password, verify_password
 from core.settings import Settings
+
+
+class VaultKeyResponse(BaseModel):
+    encrypted_vault_key: str
+
+
+class VaultKeyRequest(BaseModel):
+    encrypted_vault_key: str = Field(
+        min_length=1,
+        max_length=500,
+    )
+
 
 
 class LoginRequest(BaseModel):
@@ -150,3 +162,95 @@ async def logout(
         secure=not settings.debug,
         samesite="lax",
     )
+
+@auth_router.get(
+    "/vault-key",
+    response_model=VaultKeyResponse,
+)
+async def get_vault_key(
+    request: Request,
+    settings: Settings = Depends(_get_settings), # noqa
+):
+    session_id = (
+        request.cookies.get("session_id")
+        or request.headers.get("X-Session-Id")
+    )
+
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+
+    with get_session(settings) as db:
+        session = db.exec(
+            select(UserSession).where(UserSession.id == session_id)
+        ).first()
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid session",
+            )
+
+        user = db.exec(
+            select(User).where(User.id == session.user_id)
+        ).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User record missing in db",
+            )
+
+        return VaultKeyResponse(
+            encrypted_vault_key=user.encryption_key.decode("utf-8")
+        )
+@auth_router.post(
+    "/vault-key",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def set_vault_key(
+    payload: VaultKeyRequest,
+    request: Request,
+    settings: Settings = Depends(_get_settings), # noqa
+):
+    session_id = (
+        request.cookies.get("session_id")
+        or request.headers.get("X-Session-Id")
+    )
+
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+
+    key = payload.encrypted_vault_key.encode("utf-8")
+
+    with get_session(settings) as db:
+        session = db.exec(
+            select(UserSession).where(UserSession.id == session_id)
+        ).first()
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid session",
+            )
+
+        user = db.exec(
+            select(User).where(User.id == session.user_id)
+        ).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User record missing in db",
+            )
+
+        user.encryption_key = key
+        db.add(user)
+        db.commit()
+
+
