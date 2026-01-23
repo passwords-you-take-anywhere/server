@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -177,8 +177,6 @@ async def push_changes(
             continue
 
         # Create new or overwrite (last-write-wins)
-        server_time = datetime.now()
-
         if existing:
             # Delete existing storage domains
             existing_domains = db.exec(
@@ -194,8 +192,8 @@ async def push_changes(
             username_data=create_item.username_data,
             password_data=create_item.password_data,
             notes=create_item.notes,
-            created_at=server_time if not existing else existing.created_at,
-            updated=server_time,
+            created_at=create_item.updated if not existing else existing.created_at,
+            updated=create_item.updated,
             deleted_at=None,
         )
         db.add(new_storage)
@@ -245,12 +243,11 @@ async def push_changes(
             )
             continue
 
-        # Apply update with server timestamp
-        server_time = datetime.now()
+        # Apply update with client timestamp
         existing.username_data = update_item.username_data
         existing.password_data = update_item.password_data
         existing.notes = update_item.notes
-        existing.updated = server_time
+        existing.updated = update_item.updated
         existing.deleted_at = None  # Undelete if was deleted
 
         # Delete existing domain relationships and create new ones
@@ -263,7 +260,7 @@ async def push_changes(
         # Create new domain records
         for idx, domain_bytes in enumerate(update_item.domains):
             domain = Domain(
-                id=f"{update_item.id}_{idx}_{server_time.timestamp()}",
+                id=f"{update_item.id}_{idx}_{update_item.updated.timestamp()}",
                 encrypted_domain=domain_bytes,
             )
             db.add(domain)
@@ -299,10 +296,9 @@ async def push_changes(
             )
             continue
 
-        # Apply soft delete with server timestamp
-        server_time = datetime.now()
-        existing.deleted_at = server_time
-        existing.updated = server_time
+        # Apply soft delete with client timestamp
+        existing.deleted_at = delete_item.updated
+        existing.updated = delete_item.updated
 
         db.add(existing)
         applied_count += 1
