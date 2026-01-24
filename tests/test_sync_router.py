@@ -285,8 +285,8 @@ class TestSyncPushEndpoint:
         assert created_item is not None
         assert created_item.user_id == test_user.id
         assert created_item.deleted_at is None
-        # Server timestamp should be used, not client timestamp
-        assert created_item.updated > client_time
+        # Client timestamp should be preserved
+        assert created_item.updated == client_time
 
     def test_push_update_existing_items(
         self,

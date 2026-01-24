@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -114,7 +114,7 @@ async def get_changes(
         last_item = items[-1]
         next_cursor = f"{last_item.updated.isoformat()}_{last_item.id}"
 
-    changes = []
+    changes: list[StorageChange] = []
     for item in items:
         # Fetch domains for this storage item
         domain_records = db.exec(
@@ -199,9 +199,9 @@ async def push_changes(
         db.add(new_storage)
 
         # Create domain records for each domain
-        for domain_bytes in create_item.domains:
+        for idx, domain_bytes in enumerate(create_item.domains):
             domain = Domain(
-                id=f"{create_item.id}_{len([d for d in create_item.domains if create_item.domains.index(d) <= create_item.domains.index(domain_bytes)])}",
+                id=f"{create_item.id}_{idx + 1}",
                 encrypted_domain=domain_bytes,
             )
             db.add(domain)

@@ -62,7 +62,7 @@ def seed_if_empty(settings: Settings) -> bool:
                 db.add(storage)
 
                 # Create domain records for each domain in the list
-                for domain_idx, domain_str in enumerate(domain_list):
+                for _domain_idx, domain_str in enumerate(domain_list):
                     domain = Domain(
                         id=str(uuid4()),
                         encrypted_domain=domain_str.encode("ascii"),

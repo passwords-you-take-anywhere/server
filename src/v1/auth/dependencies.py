@@ -26,12 +26,10 @@ def get_db_session(settings: Settings = Depends(_get_settings)) -> Generator[Ses
 async def get_current_user(
     request: Request,
     db: Session = Depends(get_db_session),
-    api_key: str = Depends(api_key_header),
+    _api_key: str = Depends(api_key_header),
 ) -> User:
     """Get current authenticated user from session_id (UUIDv4 token)."""
-    session_id = request.cookies.get("session_id") or request.headers.get(
-        "X-Session-Id"
-    )
+    session_id = request.cookies.get("session_id") or request.headers.get("X-Session-Id")
 
     if not session_id:
         raise HTTPException(
