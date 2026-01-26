@@ -1,0 +1,28 @@
+site_name: PYTA Documentation
+site_description: Backend authentication and storage service
+site_author: PYTA Team
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Configuration: configuration.md
+  - Database: database.md
+  - Authentication: authentication.md
+  - API:
+      - Auth Routes: api/auth.md
+  - Security: security.md
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+
+dev_addr: 127.0.0.1:9000
