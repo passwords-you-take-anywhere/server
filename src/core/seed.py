@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from sqlmodel import Session, select
 
 from core.db import get_engine
-from core.models import Auth, Storage, User
+from core.models import Auth, Domain, Storage, StorageDomain, User
 from core.passwords import hash_password
 from core.settings import Settings
 
@@ -24,12 +24,13 @@ def seed_if_empty(settings: Settings) -> bool:
             ("carol@example.com", "Carol!23"),
         ]
 
-        domains = [
-            "example.com",
-            "mail.example.com",
-            "github.com",
-            "bank.example",
-            "forum.example",
+        # Each storage entry will have multiple domains
+        domains_per_storage = [
+            ["example.com", "www.example.com"],
+            ["mail.example.com", "smtp.example.com"],
+            ["github.com", "gist.github.com", "api.github.com"],
+            ["bank.example", "secure.bank.example"],
+            ["forum.example", "api.forum.example"],
         ]
 
         for index, (email, password) in enumerate(users, start=1):
@@ -47,17 +48,33 @@ def seed_if_empty(settings: Settings) -> bool:
             db.add(auth)
             db.add(user)
 
-            for offset, domain in enumerate(domains, start=1):
+            for offset, domain_list in enumerate(domains_per_storage, start=1):
+                storage_id = str(uuid4())
                 storage = Storage(
-                    id=str(uuid4()),
+                    id=storage_id,
                     user_id=user.id,
                     username_data=f"{email.split('@')[0]}_{offset}".encode("ascii"),
                     password_data=f"{password}_site{offset}".encode("ascii"),
-                    domains=domain.encode("ascii"),
+                    created_at=datetime.now(UTC) - timedelta(days=offset),
                     notes=f"seeded record {offset} for {email}".encode("ascii"),
-                    updated=datetime.utcnow() - timedelta(days=offset),
+                    updated=datetime.now(UTC) - timedelta(days=offset),
                 )
                 db.add(storage)
+
+                # Create domain records for each domain in the list
+                for _domain_idx, domain_str in enumerate(domain_list):
+                    domain = Domain(
+                        id=str(uuid4()),
+                        encrypted_domain=domain_str.encode("ascii"),
+                    )
+                    db.add(domain)
+
+                    storage_domain = StorageDomain(
+                        id=str(uuid4()),
+                        storage_id=storage_id,
+                        domain_id=domain.id,
+                    )
+                    db.add(storage_domain)
 
         db.commit()
         return True
