@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
-from secrets import token_bytes
-import json
 import base64
+import json
+from datetime import UTC, datetime, timedelta
+from secrets import token_bytes
+from uuid import uuid4
 
-from argon2 import PasswordHasher
-from argon2.low_level import hash_secret_raw, Type
+from argon2.low_level import Type, hash_secret_raw
 from jwcrypto import jwe, jwk
-
 from sqlmodel import Session, select
 
 from core.db import get_engine
@@ -27,8 +25,8 @@ def create_high_entropy_hash(password: str, salt: str) -> str:
     - hashLength: 32 bytes
     """
     hash_bytes = hash_secret_raw(
-        secret=password.encode('utf-8'),
-        salt=salt.encode('utf-8'),
+        secret=password.encode("utf-8"),
+        salt=salt.encode("utf-8"),
         time_cost=1,  # iterations
         memory_cost=512,  # 512KB memory
         parallelism=1,
@@ -61,21 +59,21 @@ def encrypt_vault_key(vault_key: bytes, master_key: str) -> str:
     """
     # Generate 128-bit (16-byte) IV
     iv = token_bytes(16)
-    
+
     combined = vault_key + iv
-    
-    master_key_bytes = master_key.encode('utf-8')[:32]
-    
-    master_key_b64 = base64.urlsafe_b64encode(master_key_bytes).decode('utf-8').rstrip('=')
-    
+
+    master_key_bytes = master_key.encode("utf-8")[:32]
+
+    master_key_b64 = base64.urlsafe_b64encode(master_key_bytes).decode("utf-8").rstrip("=")
+
     key = jwk.JWK(kty="oct", k=master_key_b64)
-    
+
     jwe_token = jwe.JWE(
         plaintext=combined,
         protected=json.dumps({"alg": "dir", "enc": "A256GCM"})
     )
     jwe_token.add_recipient(key)
-    
+
     return jwe_token.serialize(compact=True)
 
 
@@ -85,18 +83,18 @@ def encrypt_vault_string(data: str, vault_key: bytes) -> str:
     Replicates frontend's encryptVaultString function
     """
     # Base64url encode the vault key for JWK
-    vault_key_b64 = base64.urlsafe_b64encode(vault_key).decode('utf-8').rstrip('=')
-    
+    vault_key_b64 = base64.urlsafe_b64encode(vault_key).decode("utf-8").rstrip("=")
+
     # Create JWK from vault key
     key = jwk.JWK(kty="oct", k=vault_key_b64)
-    
+
     # Create JWE with dir (direct key agreement) and A256GCM
     jwe_token = jwe.JWE(
-        plaintext=data.encode('utf-8'),
+        plaintext=data.encode("utf-8"),
         protected=json.dumps({"alg": "dir", "enc": "A256GCM"})
     )
     jwe_token.add_recipient(key)
-    
+
     return jwe_token.serialize(compact=True)
 
 
@@ -122,12 +120,12 @@ def seed_if_empty(settings: Settings) -> bool:
             ["forum.example", "api.forum.example"],
         ]
 
-        for index, (email, password) in enumerate(users, start=1):
+        for _, (email, password) in enumerate(users, start=1):
             master_key = create_master_key(password, email)
             auth_key = create_auth_key(master_key, password)
             vault_key = generate_vault_key()
             encrypted_vault_key = encrypt_vault_key(vault_key, master_key)
-            
+
             auth = Auth(
                 id=str(uuid4()),
                 role_id="user",
@@ -144,12 +142,12 @@ def seed_if_empty(settings: Settings) -> bool:
 
             for offset, domain_list in enumerate(domains_per_storage, start=1):
                 storage_id = str(uuid4())
-                
+
                 # Encrypt storage data with vault key
                 username = f"{email.split('@')[0]}_{offset}"
                 password_value = f"{password}_site{offset}"
                 notes = f"seeded record {offset} for {email}"
-                
+
                 storage = Storage(
                     id=storage_id,
                     user_id=user.id,
@@ -165,7 +163,8 @@ def seed_if_empty(settings: Settings) -> bool:
                 for _domain_idx, domain_str in enumerate(domain_list):
                     domain = Domain(
                         id=str(uuid4()),
-                        encrypted_domain=encrypt_vault_string(domain_str, vault_key).encode("utf-8"),
+                        encrypted_domain=encrypt_vault_string(domain_str, vault_key)
+                        .encode("utf-8"),
                     )
                     db.add(domain)
 
