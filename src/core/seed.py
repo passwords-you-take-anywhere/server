@@ -113,11 +113,16 @@ def seed_if_empty(settings: Settings) -> bool:
 
         # Each storage entry will have multiple domains
         domains_per_storage = [
-            ["example.com", "www.example.com"],
-            ["mail.example.com", "smtp.example.com"],
             ["github.com", "gist.github.com", "api.github.com"],
-            ["bank.example", "secure.bank.example"],
-            ["forum.example", "api.forum.example"],
+            ["instagram.com", "www.instagram.com"],
+            ["facebook.com", "www.facebook.com", "m.facebook.com"],
+            ["twitter.com", "x.com", "api.twitter.com"],
+            ["google.com", "mail.google.com", "drive.google.com"],
+            ["netflix.com", "www.netflix.com"],
+            ["amazon.com", "www.amazon.com", "aws.amazon.com"],
+            ["linkedin.com", "www.linkedin.com"],
+            ["reddit.com", "www.reddit.com", "old.reddit.com"],
+            ["discord.com", "discordapp.com", "cdn.discord.com"],
         ]
 
         for email, password in users:
