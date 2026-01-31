@@ -120,7 +120,7 @@ def seed_if_empty(settings: Settings) -> bool:
             ["forum.example", "api.forum.example"],
         ]
 
-        for _, (email, password) in enumerate(users, start=1):
+        for email, password in users:
             master_key = create_master_key(password, email)
             auth_key = create_auth_key(master_key, password)
             vault_key = generate_vault_key()
