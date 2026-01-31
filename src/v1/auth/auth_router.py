@@ -1,14 +1,27 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr
-from sqlmodel import select
+from pydantic import BaseModel, EmailStr, Field
+from sqlmodel import Session, select
 
 from core.db import get_session
 from core.models import Auth, User
 from core.models import Session as UserSession
 from core.passwords import hash_password, verify_password
 from core.settings import Settings
+from v1.auth.dependencies import get_current_user, get_db_session
+
+
+class VaultKeyResponse(BaseModel):
+    encrypted_vault_key: str
+
+
+class VaultKeyRequest(BaseModel):
+    encrypted_vault_key: str = Field(
+        min_length=1,
+        max_length=500,
+    )
+
 
 
 class LoginRequest(BaseModel):
@@ -150,3 +163,34 @@ async def logout(
         secure=not settings.debug,
         samesite="lax",
     )
+
+@auth_router.get(
+    "/vault-key",
+    response_model=VaultKeyResponse,
+)
+async def get_vault_key(
+    _: Request,
+    settings: Settings = Depends(_get_settings), # noqa
+    user: User = Depends(get_current_user) # noqa
+):
+        return VaultKeyResponse(
+            encrypted_vault_key=user.encryption_key.decode("utf-8")
+        )
+
+@auth_router.post(
+    "/vault-key",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def set_vault_key(
+    payload: VaultKeyRequest,
+    _: Request,
+    settings: Settings = Depends(_get_settings), # noqa
+    db: Session = Depends(get_db_session), # noqa
+    user: User = Depends(get_current_user) # noqa
+):
+    key = payload.encrypted_vault_key.encode("utf-8")
+    user.encryption_key = key
+    db.add(user)
+    db.commit()
+
+
