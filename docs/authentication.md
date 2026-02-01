@@ -9,6 +9,14 @@ Authentication is session-based using cookies.
 3. Session record is created
 4. Session ID is stored in an HTTP-only cookie
 
+### Login Flow
+
+![Login Flow](../assets/login_flow.png)
+
+### Registration Flow
+
+![Registration Flow](../assets/register_flow.png)
+
 ## Cookies
 
 - `session_id`

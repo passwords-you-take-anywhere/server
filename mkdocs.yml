@@ -17,6 +17,7 @@ nav:
   - Authentication: authentication.md
   - API:
       - Auth Routes: api/auth.md
+      - Sync Routes: api/sync.md
   - Security: security.md
 
 markdown_extensions:

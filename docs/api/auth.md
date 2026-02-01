@@ -10,6 +10,8 @@ Authentication is **session-based** and uses **HTTP-only cookies** to store the 
 
 Register a new user account and immediately create a session.
 
+![Registration Flow](../../assets/register_flow.png)
+
 ### Request
 
 **Body**
@@ -55,6 +57,8 @@ Register a new user account and immediately create a session.
 ## POST `/auth/login`
 
 Authenticate an existing user and create a new session.
+
+![Login Flow](../../assets/login_flow.png)
 
 ### Request
 
